@@ -29,6 +29,10 @@ proxy.intercept({
 });
 ```
 
+## Option connectPassThrough
+
+use connectPassThrough option to forward a CONNECT request (HTTPS or WebSocket) without intercepting.
+
 ## Version 3.0
 
 Hoxy has released version 3.0.

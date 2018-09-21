@@ -4,6 +4,7 @@
  */
 
 import http from 'http'
+import url from 'url'
 import Cycle from './cycle'
 import cheerio from 'cheerio'
 import querystring from 'querystring'
@@ -254,6 +255,30 @@ export default class Proxy extends EventEmitter {
 
       this._tlsSpoofingServer.on('error', (err) => {
         this.emit('error', err);
+      })
+    }
+
+    else if (opts.connectPassThrough) {
+      this._server.on('connect', (request, clientSocket, head) => {
+        this.emit('log', {
+          level: 'debug',
+          message: `CONNECT ${request.url}`,
+        });
+        let u = url.parse('http://' + request.url);
+        let serverSocket = net.connect(u.port, u.hostname, () => {
+          clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+          serverSocket.write(head);
+          clientSocket
+          .pipe(serverSocket)
+          .pipe(clientSocket)
+        }).on('error', err => {
+          clientSocket.end();
+          this.emit('log', {
+            level: 'error',
+            message: err.message,
+            error: err,
+          });
+        })
       })
     }
   }
