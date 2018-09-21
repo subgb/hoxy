@@ -6,10 +6,15 @@ Hoxy is an HTTP traffic-sniffing and manipulation tool for JavaScript programmer
 
 http://greim.github.io/hoxy/
 
+## Install
+```bash
+npm install @subns/hoxy
+```
+
 ## Example
 
 ```js
-var hoxy = require('hoxy');
+var hoxy = require('@subns/hoxy');
 var proxy = hoxy.createServer().listen(8080);
 proxy.intercept({
 
