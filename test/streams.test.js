@@ -10,13 +10,13 @@ import getMegaSource from './lib/megabyte-stream'
 describe('Streams', function() {
 
   it('should have a size', function() {
-    let fake = streams.from(new Buffer('x'.repeat(300), 'utf8'))
+    let fake = streams.from(Buffer.from('x'.repeat(300), 'utf8'))
     assert.strictEqual(fake.size(), 300)
   })
 
   it('should output input', function(done) {
     let s = 'x'.repeat(300)
-    let fake = streams.from(new Buffer(s, 'utf8'))
+    let fake = streams.from(Buffer.from(s, 'utf8'))
     let chunks = []
     fake.on('data', function(buffer) {
       chunks.push(buffer.toString('utf8'))

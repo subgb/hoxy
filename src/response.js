@@ -76,7 +76,7 @@ export default class Response extends Body {
    */
   _finalize() {
     if (!this._data.source) {
-      this._data.source = streams.from(new Buffer(''))
+      this._data.source = streams.from(Buffer.from(''))
     }
 
     if (!this._source._isOriginal) {

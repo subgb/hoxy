@@ -102,7 +102,7 @@ class Sender {
           sendBody.pipe(toServer)
         } else {
           if (!sendBody) { sendBody = '' }
-          if (!Buffer.isBuffer(sendBody)) { sendBody = new Buffer(sendBody, 'utf8') }
+          if (!Buffer.isBuffer(sendBody)) { sendBody = Buffer.from(sendBody, 'utf8') }
           toServer.end(sendBody)
         }
         // -----------------

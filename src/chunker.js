@@ -12,6 +12,6 @@ export default {
   },
 
   stringToChunks(str, encoding) {
-    return [new Buffer(str, encoding || 'utf8')]
+    return [Buffer.from(str, encoding || 'utf8')]
   },
 }

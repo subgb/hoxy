@@ -17,7 +17,7 @@ export default class BaseReader extends Readable {
 
   finalize() {
     let body = this.toString()
-    this._buffer = new Buffer(body, 'utf8')
+    this._buffer = Buffer.from(body, 'utf8')
   }
 
   _read() {

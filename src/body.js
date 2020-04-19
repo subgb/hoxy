@@ -59,7 +59,7 @@ export default class Body extends EventEmitter {
   }
 
   set string(str) {
-    this._source = new BufferReader(new Buffer(str, 'utf8'))
+    this._source = new BufferReader(Buffer.from(str, 'utf8'))
   }
 
   // -------------------------------------------------

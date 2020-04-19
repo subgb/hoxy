@@ -10,9 +10,9 @@ export class ErrorStream extends Readable {
   constructor() {
     super({})
     this._buffers = [
-      new Buffer('x'.repeat(256), 'utf8'),
-      new Buffer('x'.repeat(256), 'utf8'),
-      new Buffer('x'.repeat(256), 'utf8'),
+      Buffer.from('x'.repeat(256), 'utf8'),
+      Buffer.from('x'.repeat(256), 'utf8'),
+      Buffer.from('x'.repeat(256), 'utf8'),
     ]
   }
 
@@ -30,9 +30,9 @@ export class DestroyStream extends Readable {
   constructor() {
     super({})
     this._buffers = [
-      new Buffer('x'.repeat(256), 'utf8'),
-      new Buffer('x'.repeat(256), 'utf8'),
-      new Buffer('x'.repeat(256), 'utf8'),
+      Buffer.from('x'.repeat(256), 'utf8'),
+      Buffer.from('x'.repeat(256), 'utf8'),
+      Buffer.from('x'.repeat(256), 'utf8'),
     ]
   }
 

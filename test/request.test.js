@@ -9,9 +9,9 @@ import streams from '../src/streams'
 
 function getRequestData() {
   let data = streams.from([
-    new Buffer('<!doctype html><html><head></head><body>', 'utf8'),
-    new Buffer('<p>foo</p>', 'utf8'),
-    new Buffer('</body></html>', 'utf8'),
+    Buffer.from('<!doctype html><html><head></head><body>', 'utf8'),
+    Buffer.from('<p>foo</p>', 'utf8'),
+    Buffer.from('</body></html>', 'utf8'),
   ])
   data.protocol = 'http:'
   data.hostname = 'example.com'
