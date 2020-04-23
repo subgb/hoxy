@@ -23,6 +23,7 @@ import adapt from 'ugly-adapter'
 import wait from './wait'
 import task from './task'
 import UrlPath from './url-path'
+import ProxyAgent from 'proxy-agent'
 
 let staticServer = (() => {
 
@@ -54,13 +55,7 @@ class ProvisionableRequest {
     this._respProm = task()
     let h = (/https/i).test(opts.protocol) ? https : http
     if (opts.proxy) {
-      let proxyInfo = url.parse(opts.proxy)
-        , proxyPort = proxyInfo.port
-        , proxyHostname = proxyInfo.hostname
-        , proxyPath = 'http://' + opts.hostname + (opts.port ? ':' + opts.port : '') + opts.path
-      opts.hostname = proxyHostname
-      opts.port = proxyPort
-      opts.path = proxyPath
+      opts.agent = new ProxyAgent(opts.proxy);
     }
     this._writable = h.request(opts, this._respProm.resolve)
     this._writable.on('error', this._respProm.reject)

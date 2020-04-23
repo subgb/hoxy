@@ -2,6 +2,16 @@
 
 Hoxy is an HTTP traffic-sniffing and manipulation tool for JavaScript programmers.
 
+
+## Update
+
+* Option upstreamProxy (string)
+Support socks5 upstream proxy: "socks://localhost:1080".
+
+* Option connectPassThrough (boolean)
+Forward a CONNECT request (HTTPS or WebSocket) without intercepting.
+
+
 ## Full Documentation
 
 http://greim.github.io/hoxy/
@@ -33,10 +43,6 @@ proxy.intercept({
   // all page titles will now say "Unicorns!"
 });
 ```
-
-## Option connectPassThrough
-
-use connectPassThrough option to forward a CONNECT request (HTTPS or WebSocket) without intercepting.
 
 ## Version 3.0
 

@@ -128,10 +128,10 @@ export default class Proxy extends EventEmitter {
 
     if (opts.upstreamProxy) {
       let proxy = opts.upstreamProxy
-      if (!/^https?:\/\//.test(proxy)) {
+      if (!/:\/\//.test(proxy)) {
         proxy = 'http://' + proxy
       }
-      if (!/^https?:\/\/[^:]+:\d+$/.test(proxy)) {
+      if (!/^(socks|https?):\/\/[^:]+:\d+$/.test(proxy)) {
         throw new Error(`invalid value for upstreamProxy: "${opts.upstreamProxy}"`)
       }
       this._upstreamProxy = proxy

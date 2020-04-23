@@ -27,6 +27,12 @@ describe('hoxy', function() {
     })
   })
 
+  it('should accept a valid upstream proxy', () => {
+    let proxy = new Proxy({
+      upstreamProxy: 'socks://localhost:1080',
+    })
+  })
+
   it('should reject an invalid upstream proxy', () => {
     assert.throws(() => {
       let proxy = new Proxy({
