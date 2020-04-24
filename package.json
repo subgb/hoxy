@@ -13,6 +13,7 @@
     "test": "mocha --compilers js:babel/register --timeout 3000",
     "compile": "babel src --out-dir lib --optional runtime",
     "lint": "eslint ./src",
+    "dev": "nodemon --exec babel-node experiments/index.js",
     "docs": "babel-node ./dev-bin/build.js > ./index.html"
   },
   "keywords": [

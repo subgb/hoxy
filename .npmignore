@@ -7,3 +7,5 @@ poc.js
 /dev-bin/
 /docs/
 /experiments/
+mycert/
+subns-hoxy-*.tgz
