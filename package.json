@@ -29,6 +29,7 @@
     "web"
   ],
   "dependencies": {
+    "@heroku/socksv5": "0.0.9",
     "await": "^0.2.5",
     "babel-runtime": "^5.8.38",
     "bluebird": "^2.9.34",
