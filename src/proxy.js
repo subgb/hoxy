@@ -17,6 +17,7 @@ import net from 'net'
 import https from 'https'
 import { ThrottleGroup } from 'stream-throttle'
 import socks from '@heroku/socksv5'
+import ProxyAgent from 'proxy-agent'
 
 // TODO: test all five for both requet and response
 let asHandlers = {
@@ -40,12 +41,7 @@ let asHandlers = {
   'buffer': () => {},
   'string': () => {},
 }
-
-function pipeConnect(clientSocket, serverSocket, head) {
-    clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
-    serverSocket.write(head)
-    clientSocket.pipe(serverSocket).pipe(clientSocket)
-}
+const PLAINMARK = Buffer.from('GET /');
 
 function pipeUpgrade(clientSocket, resp, serverSocket, head) {
   clientSocket.write(`HTTP/1.1 ${resp.statusCode} ${resp.statusMessage}\r\n`)
@@ -152,6 +148,7 @@ export default class Proxy extends EventEmitter {
         throw new Error(`invalid value for upstreamProxy: "${opts.upstreamProxy}"`)
       }
       this._upstreamProxy = proxy
+      this._upstreamAgent = {agent: new ProxyAgent(proxy)};
     }
 
     if (opts.slow) {
@@ -202,24 +199,9 @@ export default class Proxy extends EventEmitter {
         catch(ex) { this._emitError(ex, 'response-sent') }
       }).catch(ex => {
         this._logError(ex)
+        toClient.end()
       })
     })
-
-    this._server.on('upgrade', (req, clientSocket, head) => {
-      clientSocket.on('error', err => err);
-      this.emit('upgrade', {
-        upgrade: req.headers.upgrade,
-        url: req.url,
-      });
-      http.request(req.url, {
-        headers: req.headers,
-      }).on('upgrade', (resp, serverSocket, head)=> {
-        pipeUpgrade(clientSocket, resp, serverSocket, head)
-      }).on('error', err=>{
-        clientSocket.end()
-        this._logError(err)
-      }).end();
-    });
 
     this._server.on('error', err => {
       this._logError(err, 'proxy server error: ')
@@ -236,15 +218,6 @@ export default class Proxy extends EventEmitter {
         this.emit('log', {
           level: 'info',
           message: `generated fake credentials for ${serverName}`,
-        })
-      })
-
-      this._server.on('connect', (request, clientSocket, head) => {
-        clientSocket.on('error', err => err);
-        this.emit('connect', request)
-        const {address, port} = this._tlsSpoofingServer.address()
-        const serverSocket = net.connect(port, address, () => {
-          pipeConnect(clientSocket, serverSocket, head)
         })
       })
 
@@ -289,6 +262,7 @@ export default class Proxy extends EventEmitter {
           method: req.method,
           path: req.url,
           headers: req.headers,
+          ... this._upstreamAgent,
         }).on('upgrade', (resp, serverSocket, head)=> {
           pipeUpgrade(clientSocket, resp, serverSocket, head)
         }).on('error', err=>{
@@ -298,17 +272,53 @@ export default class Proxy extends EventEmitter {
       })
     }
 
-    else {
-      this._server.on('connect', (request, clientSocket, head) => {
-        clientSocket.on('error', err => err);
-        this.emit('connect', request);
-        if (/^http/.test(this._upstreamProxy)) {
+    this._server.on('upgrade', (req, clientSocket, head) => {
+      clientSocket.on('error', err => err);
+      this.emit('upgrade', {
+        upgrade: req.headers.upgrade,
+        url: req.url,
+      });
+      http.request(req.url, {
+        headers: req.headers,
+        ... this._upstreamAgent,
+      }).on('upgrade', (resp, serverSocket, head)=> {
+        pipeUpgrade(clientSocket, resp, serverSocket, head)
+      }).on('error', err=>{
+        clientSocket.end()
+        this._logError(err)
+      }).end();
+    });
+
+    this._server.on('connect', (request, clientSocket, head) => {
+      this.emit('connect', request);
+      clientSocket.on('error', err => err);
+      clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
+      clientSocket.once('data', chunk => {
+        if (PLAINMARK.equals(chunk.slice(0,PLAINMARK.length))) {
+          const {address, port} = this._server.address()
+          const serverSocket = net.connect(port, address, () => {
+            serverSocket.write('GET http://'+request.url)
+            serverSocket.write(chunk.slice(4))
+            clientSocket.pipe(serverSocket).pipe(clientSocket)
+          })
+        }
+        else if (opts.certAuthority) {
+          const {address, port} = this._tlsSpoofingServer.address()
+          const serverSocket = net.connect(port, address, () => {
+            serverSocket.write(head)
+            serverSocket.write(chunk)
+            clientSocket.pipe(serverSocket).pipe(clientSocket)
+          })
+        }
+        else if (/^http/.test(this._upstreamProxy)) {
           http.request(this._upstreamProxy, {
             method: 'CONNECT',
             path: request.url,
             headers: request.headers,
           }).on('connect', (resp, serverSocket, head) => {
-            pipeConnect(clientSocket, serverSocket, head);
+            serverSocket.write(head)
+            serverSocket.write(chunk)
+            clientSocket.pipe(serverSocket).pipe(clientSocket)
             serverSocket.on('error', err => {
               clientSocket.end();
               this._logError(err);
@@ -329,7 +339,9 @@ export default class Proxy extends EventEmitter {
             auths: [socks.auth.None()],
             localDNS: false,
           }, serverSocket => {
-            pipeConnect(clientSocket, serverSocket, head);
+            serverSocket.write(head)
+            serverSocket.write(chunk)
+            clientSocket.pipe(serverSocket).pipe(clientSocket)
           }).on('error', err => {
             clientSocket.end();
             this._logError(err);
@@ -338,14 +350,16 @@ export default class Proxy extends EventEmitter {
         else {
           const {hostname, port} = url.parse('http://'+request.url);
           const serverSocket = net.connect(port, hostname, () => {
-            pipeConnect(clientSocket, serverSocket, head)
+            serverSocket.write(head)
+            serverSocket.write(chunk)
+            clientSocket.pipe(serverSocket).pipe(clientSocket)
           }).on('error', err => {
             clientSocket.end();
             this._logError(err);
           })
         }
       })
-    }
+    });
   }
 
   listen(port) {
