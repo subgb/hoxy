@@ -41,10 +41,20 @@ let asHandlers = {
   'string': () => {},
 }
 
-function pipeClientToServer(clientSocket, serverSocket, head) {
+function pipeConnect(clientSocket, serverSocket, head) {
     clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n')
     serverSocket.write(head)
     clientSocket.pipe(serverSocket).pipe(clientSocket)
+}
+
+function pipeUpgrade(clientSocket, resp, serverSocket, head) {
+  clientSocket.write(`HTTP/1.1 ${resp.statusCode} ${resp.statusMessage}\r\n`)
+  for (let i=0, raw=resp.rawHeaders; i<raw.length; i+=2) {
+    clientSocket.write(`${raw[i]}: ${raw[i+1]}\r\n`)
+  }
+  clientSocket.write('\r\n')
+  serverSocket.write(head)
+  clientSocket.pipe(serverSocket).pipe(clientSocket)
 }
 
 function wrapAsync(intercept) {
@@ -191,22 +201,28 @@ export default class Proxy extends EventEmitter {
         try { yield this._runIntercepts('response-sent', cycle) }
         catch(ex) { this._emitError(ex, 'response-sent') }
       }).catch(ex => {
-        this.emit('error', ex)
-        this.emit('log', {
-          level: 'error',
-          message: ex.message,
-          error: ex,
-        })
+        this._logError(ex)
       })
     })
 
+    this._server.on('upgrade', (req, clientSocket, head) => {
+      clientSocket.on('error', err => err);
+      this.emit('upgrade', {
+        upgrade: req.headers.upgrade,
+        url: req.url,
+      });
+      http.request(req.url, {
+        headers: req.headers,
+      }).on('upgrade', (resp, serverSocket, head)=> {
+        pipeUpgrade(clientSocket, resp, serverSocket, head)
+      }).on('error', err=>{
+        clientSocket.end()
+        this._logError(err)
+      }).end();
+    });
+
     this._server.on('error', err => {
-      this.emit('error', err)
-      this.emit('log', {
-        level: 'error',
-        message: 'proxy server error: ' + err.message,
-        error: err,
-      })
+      this._logError(err, 'proxy server error: ')
     })
 
     if (opts.certAuthority) {
@@ -224,10 +240,11 @@ export default class Proxy extends EventEmitter {
       })
 
       this._server.on('connect', (request, clientSocket, head) => {
+        clientSocket.on('error', err => err);
         this.emit('connect', request)
         const {address, port} = this._tlsSpoofingServer.address()
         const serverSocket = net.connect(port, address, () => {
-          pipeClientToServer(clientSocket, serverSocket, head)
+          pipeConnect(clientSocket, serverSocket, head)
         })
       })
 
@@ -259,10 +276,31 @@ export default class Proxy extends EventEmitter {
       this._tlsSpoofingServer.on('error', (err) => {
         this.emit('error', err);
       })
+
+      this._tlsSpoofingServer.on('upgrade', (req, clientSocket, head) => {
+        this.emit('upgrade', {
+          upgrade: req.headers.upgrade,
+          url: `https://${req.headers.host}${req.url}`,
+        });
+        const [hostname, port] = req.headers.host.split(':');
+        https.request({
+          hostname: hostname,
+          port: +port || 443,
+          method: req.method,
+          path: req.url,
+          headers: req.headers,
+        }).on('upgrade', (resp, serverSocket, head)=> {
+          pipeUpgrade(clientSocket, resp, serverSocket, head)
+        }).on('error', err=>{
+          clientSocket.end()
+          this._logError(err)
+        }).end();
+      })
     }
 
     else {
       this._server.on('connect', (request, clientSocket, head) => {
+        clientSocket.on('error', err => err);
         this.emit('connect', request);
         if (/^http/.test(this._upstreamProxy)) {
           http.request(this._upstreamProxy, {
@@ -270,7 +308,7 @@ export default class Proxy extends EventEmitter {
             path: request.url,
             headers: request.headers,
           }).on('connect', (resp, serverSocket, head) => {
-            pipeClientToServer(clientSocket, serverSocket, head);
+            pipeConnect(clientSocket, serverSocket, head);
             serverSocket.on('error', err => {
               clientSocket.end();
               this._logError(err);
@@ -291,7 +329,7 @@ export default class Proxy extends EventEmitter {
             auths: [socks.auth.None()],
             localDNS: false,
           }, serverSocket => {
-            pipeClientToServer(clientSocket, serverSocket, head);
+            pipeConnect(clientSocket, serverSocket, head);
           }).on('error', err => {
             clientSocket.end();
             this._logError(err);
@@ -300,7 +338,7 @@ export default class Proxy extends EventEmitter {
         else {
           const {hostname, port} = url.parse('http://'+request.url);
           const serverSocket = net.connect(port, hostname, () => {
-            pipeClientToServer(clientSocket, serverSocket, head)
+            pipeConnect(clientSocket, serverSocket, head)
           }).on('error', err => {
             clientSocket.end();
             this._logError(err);
