@@ -247,6 +247,7 @@ export default class Proxy extends EventEmitter {
       })
 
       this._tlsSpoofingServer.on('upgrade', (req, clientSocket, head) => {
+        clientSocket.on('error', err => err);
         http.request({
           host: 'localhost',
           port: this._server.address().port,
