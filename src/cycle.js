@@ -24,6 +24,7 @@ import wait from './wait'
 import task from './task'
 import UrlPath from './url-path'
 import ProxyAgent from 'proxy-agent'
+import WebSocket from 'ws'
 
 let staticServer = (() => {
 
@@ -231,6 +232,65 @@ export default class Cycle extends EventEmitter {
 
   _setPhase(phase) {
     this._phase = this._request.phase = this._response.phase = phase
+  }
+
+  _websocketToServer(clientWs) {
+    this.clientWs = clientWs;
+    clientWs._socket.pause();
+    const req = this._request._finalize();
+    const headers = _.omit(req.headers, 'host,upgrade,connection,sec-websocket-key,sec-websocket-extensions'.split(','));
+    const wsopt = {headers};
+    let prots = [];
+    if ('sec-websocket-protocol' in headers) {
+      prots = headers['sec-websocket-protocol'].split(',').map(x=>x.trim());
+      delete headers['sec-websocket-protocol'];
+    }
+    if ('sec-websocket-version' in headers) {
+      const ver = +headers['sec-websocket-version'];
+      if (!isNaN(ver)) wsopt.protocolVersion = ver;
+      delete headers['sec-websocket-version'];
+    }
+    if ('sec-websocket-origin' in headers) {
+      wsopt.origin = headers['sec-websocket-origin'];
+      delete headers['sec-websocket-origin'];
+    }
+    if ('origin' in headers) {
+      wsopt.origin = headers['origin'];
+      delete headers['origin'];
+    }
+    if (this._proxy._upstreamProxy) {
+      wsopt.agent = new ProxyAgent(this._proxy._upstreamProxy)
+    }
+    const serverWs = this.serverWs = new WebSocket(req.fullUrl(), prots, wsopt);
+    const setHandler = (type, fromServer) => {
+      const pairs = [clientWs, serverWs];
+      if (fromServer) pairs.reverse();
+      pairs[0].on(type, data => {
+        const method = type=='message'? 'send': type;
+        const ctx = {data, fromServer, type};
+        this.emit('ws-frame', ctx);
+        pairs[1][method](ctx.data);
+      });
+    };
+    setHandler('message', true);
+    setHandler('ping', true);
+    setHandler('pong', true);
+    serverWs.once('open', () => {
+      this.emit('ws-open');
+      setHandler('message', false);
+      setHandler('ping', false);
+      setHandler('pong', false);
+      clientWs._socket.resume();
+    });
+    serverWs.on('error', err => this._proxy.emit('error', err));
+    clientWs.on('error', err => this._proxy.emit('error', err));
+    serverWs.on('close', (code, reason) => {
+      clientWs.close();
+    });
+    clientWs.on('close', (code, reason) => {
+      this.emit('ws-close', code);
+      if (serverWs.readyState) serverWs.close();
+    });
   }
 
   /*
