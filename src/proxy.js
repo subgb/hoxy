@@ -298,7 +298,7 @@ export default class Proxy extends EventEmitter {
           const serverSocket = net.connect(port, address, () => {
             pipeSocket(clientSocket, serverSocket, [head, chunk]);
             clientSocket.on('error', err => serverSocket.end());
-          })
+          }).on('error', err => err);
         }
         else if (/^http/.test(this._upstreamProxy)) {
           http.request(this._upstreamProxy, {
