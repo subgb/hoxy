@@ -194,7 +194,7 @@ export default class Proxy extends EventEmitter {
         try { yield this._runIntercepts('response-sent', cycle) }
         catch(ex) { this._emitError(ex, 'response-sent') }
       }).catch(ex => {
-        this._logError(ex)
+        this._logErrorUrl(ex, req.fullUrl());
         toClient.end()
       })
     })
@@ -237,7 +237,7 @@ export default class Proxy extends EventEmitter {
           toServer.end();
         })
         toServer.on('error', (err) => {
-          this.emit('error', err);
+          this._logErrorUrl(err, fullUrl)
         });
         fromClient.pipe(toServer)
       })
@@ -503,6 +503,12 @@ export default class Proxy extends EventEmitter {
       message: prefix + err.message,
       error: err,
     })
+  }
+
+  _logErrorUrl(err, url) {
+    err.url = url;
+    Error.captureStackTrace(err)
+    this.emit('error', err);
   }
 }
 
