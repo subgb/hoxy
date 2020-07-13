@@ -258,7 +258,7 @@ export default class Cycle extends EventEmitter {
       wsopt.origin = headers['origin'];
       delete headers['origin'];
     }
-    if (this._proxy._upstreamProxy) {
+    if (this._proxy._upstreamProxy && !this.skipProxy) {
       wsopt.agent = new ProxyAgent(this._proxy._upstreamProxy)
     }
     const serverWs = this.serverWs = new WebSocket(req.fullUrl(), prots, wsopt);
@@ -310,6 +310,7 @@ export default class Cycle extends EventEmitter {
       , pSlow = this._proxy._slow || {}
       , rSlow = req.slow() || {}
       , latency = rSlow.latency || 0
+    if (this.skipProxy) upstreamProxy = null;
     if (resp._populated) {
       return Promise.resolve(undefined)
     }
