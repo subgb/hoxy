@@ -16,13 +16,13 @@ http://greim.github.io/hoxy/
 
 ## Install
 ```bash
-npm install @subns/hoxy
+npm install hoxyws
 ```
 
 ## Example
 
 ```js
-var hoxy = require('@subns/hoxy');
+var hoxy = require('hoxyws');
 var proxy = hoxy.createServer().listen(8080);
 proxy.intercept({
 
