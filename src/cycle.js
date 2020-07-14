@@ -283,8 +283,8 @@ export default class Cycle extends EventEmitter {
       setHandler('pong', false);
       clientWs._socket.resume();
     });
-    serverWs.on('error', err => this._proxy.emit('error', err));
-    clientWs.on('error', err => this._proxy.emit('error', err));
+    serverWs.on('error', err => this._proxy._logErrorUrl(err, req.fullUrl()));
+    clientWs.on('error', err => this._proxy._logErrorUrl(err, req.fullUrl()));
     serverWs.on('close', (code, reason) => {
       clientWs.close();
     });
