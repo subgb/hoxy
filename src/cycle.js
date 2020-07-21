@@ -58,6 +58,7 @@ class ProvisionableRequest {
     if (opts.proxy) {
       opts.agent = new ProxyAgent(opts.proxy);
     }
+    opts.insecureHTTPParser = true;
     this._writable = h.request(opts, this._respProm.resolve)
     this._writable.on('error', this._respProm.reject)
   }
@@ -358,7 +359,11 @@ export default class Cycle extends EventEmitter {
       if (latency > 0) {
         yield wait(latency)
       }
-      outResp.writeHead(resp.statusCode, resp.headers)
+      for (const name in resp.headers) {
+        try { outResp.setHeader(name, resp.headers[name]) }
+        catch(ex) {}
+      }
+      outResp.writeHead(resp.statusCode) 
       if (rSlow.rate > 0) {
         let brake = streams.brake(rSlow.rate)
         source = source.pipe(brake)
