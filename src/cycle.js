@@ -185,7 +185,7 @@ export default class Cycle extends EventEmitter {
         , pPath = new UrlPath(path)
         , pFullPath = pPath.rootTo(pDocroot)
         , fullSysPath = pFullPath.toSystemPath()
-      let created = yield check(strategy, fullSysPath, req, this._proxy._upstreamProxy)
+      let created = yield check(strategy, fullSysPath, req, this._getUpstreamProxy())
       if (created) {
         this.emit('log', {
           level: 'info',
@@ -259,9 +259,9 @@ export default class Cycle extends EventEmitter {
       wsopt.origin = headers['origin'];
       delete headers['origin'];
     }
-    const upstreamProxy = this.proxy || this._proxy._upstreamProxy;
-    if (upstreamProxy && !this.skipProxy) {
-      wsopt.agent = new ProxyAgent(upstreamProxy)
+    const uproxy = this._getUpstreamProxy();
+    if (uproxy) {
+      wsopt.agent = new ProxyAgent(uproxy)
     }
     const serverWs = this.serverWs = new WebSocket(req.fullUrl(), prots, wsopt);
     const setHandler = (type, fromServer) => {
@@ -307,12 +307,11 @@ export default class Cycle extends EventEmitter {
   _sendToServer() {
     let req = this._request._finalize()
       , resp = this._response
-      , upstreamProxy = this.proxy || this._proxy._upstreamProxy
+      , upstreamProxy = this._getUpstreamProxy()
       , source = req._source
       , pSlow = this._proxy._slow || {}
       , rSlow = req.slow() || {}
       , latency = rSlow.latency || 0
-    if (this.skipProxy) upstreamProxy = null;
     if (resp._populated) {
       return Promise.resolve(undefined)
     }
@@ -384,6 +383,14 @@ export default class Cycle extends EventEmitter {
         source.pipe(outResp)
       })
     })
+  }
+
+  _getUpstreamProxy() {
+    if (this.proxy===null || this.proxy===false) return null;
+    if (typeof this.proxy=='string') return this.proxy;
+    const proxy = this._proxy._upstreamProxy;
+    if (typeof proxy=='string') return proxy;
+    return null;
   }
 
   _start() {
