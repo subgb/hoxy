@@ -8,4 +8,5 @@ poc.js
 /docs/
 /experiments/
 mycert/
-hoxyws-*.tgz
+*.pem
+*.tgz

@@ -6,3 +6,4 @@ poc.js
 /experiments/
 /index.html
 mycert/
+*.pem
