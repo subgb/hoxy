@@ -1,6 +1,6 @@
 {
   "name": "hoxyws",
-  "version": "3.6.0",
+  "version": "3.6.1",
   "author": "Greg Reimer <gregreimer@gmail.com>",
   "description": "Web-hacking proxy API for node",
   "repository": {
