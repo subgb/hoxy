@@ -267,11 +267,12 @@ export default class Cycle extends EventEmitter {
     const setHandler = (type, fromServer) => {
       const pairs = [clientWs, serverWs];
       if (fromServer) pairs.reverse();
-      pairs[0].on(type, data => {
+      pairs[0].on(type, async data => {
         const method = type=='message'? 'send': type;
         const ctx = {data, fromServer, type};
         this.emit('ws-frame', ctx);
-        pairs[1][method](ctx.data);
+        const drop = await ctx.drop;
+        if (drop!==true) pairs[1][method](ctx.data);
       });
     };
     setHandler('message', true);
